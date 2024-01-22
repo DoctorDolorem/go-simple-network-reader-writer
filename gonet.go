@@ -9,10 +9,10 @@ import (
 	"os"
 )
 
-var p string
+var port string
 
 func defineFlags() {
-	flag.StringVar(&p, "port", "9000", "port to listen on")
+	flag.StringVar(&port, "p", "9000", "port to listen on")
 	flag.Parse()
 }
 
@@ -26,8 +26,8 @@ func handleConnection(conn net.Conn) {
 func main() {
 	defineFlags()
 
-	fmt.Println("Listening on port ", p)
-	source := ":" + p
+	fmt.Println("Listening on port", port)
+	source := ":" + port
 	listener, err := net.Listen("tcp", source)
 	if err != nil {
 		log.Fatal(err)
