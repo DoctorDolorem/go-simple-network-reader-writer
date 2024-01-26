@@ -26,16 +26,21 @@ func handleConnection(conn net.Conn) {
 func main() {
 	defineFlags()
 
-	fmt.Println("Listening on port", port)
 	source := ":" + port
 	listener, err := net.Listen("tcp", source)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("can't open port", err)
+	} else {
+		fmt.Println("Listening on port", port)
 	}
 
 	conn, err := listener.Accept()
 	if err != nil {
 		log.Fatal(err)
+	} else {
+		remoteAddr := conn.RemoteAddr().(*net.TCPAddr)
+		fmt.Println("Connection accepted from", remoteAddr.IP)
 	}
+
 	handleConnection(conn)
 }
