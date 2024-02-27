@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"io"
@@ -17,7 +18,25 @@ func defineFlags() {
 }
 
 func handleConnection(conn net.Conn) {
-	_, err := io.Copy(conn, os.Stdin)
+	defer conn.Close()
+
+	// Goroutine for sending commands
+	go func() {
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			cmdStr := scanner.Text() + "\n"
+			_, err := conn.Write([]byte(cmdStr))
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	// Goroutine for receiving output
+	_, err := io.Copy(os.Stdout, conn)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -43,4 +62,5 @@ func main() {
 	}
 
 	handleConnection(conn)
+
 }
