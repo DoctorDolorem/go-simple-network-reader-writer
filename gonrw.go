@@ -37,7 +37,7 @@ func handleConnection(conn net.Conn) error {
 
 	_, err := io.Copy(os.Stdout, conn)
 	if err != nil {
-		return err
+		return fmt.Errorf("error reading from connection: %s", err)
 	}
 	return nil
 }
@@ -49,13 +49,13 @@ func main() {
 	if err != nil {
 		log.Fatal("can't start listener: ", err)
 	}
-	defer listener.Close()
 
 	fmt.Println("Listening on port", port)
 
 	conn, err := listener.Accept()
 	if err != nil {
-		log.Fatalf("error accepting incoming connection: %s", err)
+		fmt.Printf("error accepting incoming connection: %s", err)
+		conn.Close()
 	}
 	defer conn.Close()
 
