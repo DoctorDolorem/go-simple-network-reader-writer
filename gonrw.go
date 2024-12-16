@@ -11,6 +11,7 @@ import (
 )
 
 var port string
+var exit = false
 
 func defineFlags() {
 	flag.StringVar(&port, "p", "9000", "port to listen on")
@@ -25,6 +26,12 @@ func handleConnection(conn net.Conn) error {
 		scanner := bufio.NewScanner(os.Stdin)
 		for scanner.Scan() {
 			cmdStr := scanner.Text() + "\n"
+			if cmdStr == "close;\n" {
+				fmt.Println("Closing connection")
+				exit = true
+				conn.Write([]byte("exit\n"))
+				break
+			}
 			_, err := conn.Write([]byte(cmdStr))
 			if err != nil {
 				log.Println("error writing to connection:", err)
@@ -34,7 +41,15 @@ func handleConnection(conn net.Conn) error {
 		if err != nil {
 			log.Println("error reading from stdin:", err)
 		}
+
+		if exit {
+			return
+		}
 	}()
+
+	if exit {
+		return nil
+	}
 
 	_, err := io.Copy(os.Stdout, conn)
 	if err != nil {
@@ -52,6 +67,7 @@ func main() {
 	}
 
 	fmt.Println("Listening on port", port)
+	fmt.Println("type 'close;' at any moment to close the connection")
 
 	conn, err := listener.Accept()
 	if err != nil {
@@ -66,6 +82,11 @@ func main() {
 	err = handleConnection(conn)
 	if err != nil {
 		fmt.Printf("error while handling connection: %s\n", err)
+		conn.Close()
 	}
-
+	if exit {
+		conn.Close()
+		fmt.Printf("Connection closed by user\n")
+		os.Exit(0)
+	}
 }
