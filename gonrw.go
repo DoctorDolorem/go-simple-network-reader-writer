@@ -30,7 +30,8 @@ func handleConnection(conn net.Conn) error {
 				log.Println("error writing to connection:", err)
 			}
 		}
-		if err := scanner.Err(); err != nil {
+		err := scanner.Err()
+		if err != nil {
 			log.Println("error reading from stdin:", err)
 		}
 	}()
