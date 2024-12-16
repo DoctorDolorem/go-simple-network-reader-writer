@@ -15,9 +15,11 @@ var port string
 func defineFlags() {
 	flag.StringVar(&port, "p", "9000", "port to listen on")
 	flag.Parse()
+	port = ":" + port
+
 }
 
-func handleConnection(conn net.Conn) {
+func handleConnection(conn net.Conn) error {
 	// Goroutine for sending commands
 	go func() {
 		scanner := bufio.NewScanner(os.Stdin)
@@ -25,42 +27,44 @@ func handleConnection(conn net.Conn) {
 			cmdStr := scanner.Text() + "\n"
 			_, err := conn.Write([]byte(cmdStr))
 			if err != nil {
-				log.Fatal(err)
+				log.Println("error writing to connection:", err)
 			}
 		}
 		if err := scanner.Err(); err != nil {
-			log.Fatal(err)
+			log.Println("error reading from stdin:", err)
 		}
 	}()
 
-	// Goroutine for receiving output
 	_, err := io.Copy(os.Stdout, conn)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-
+	return nil
 }
 
 func main() {
 	defineFlags()
 
-	source := ":" + port
-	listener, err := net.Listen("tcp", source)
+	listener, err := net.Listen("tcp", port)
 	if err != nil {
-		log.Fatal("can't open port", err)
-	} else {
-		fmt.Println("Listening on port", port)
+		log.Fatal("can't start listener: ", err)
 	}
+	defer listener.Close()
+
+	fmt.Println("Listening on port", port)
 
 	conn, err := listener.Accept()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("error accepting incoming connection: %s", err)
 	}
 	defer conn.Close()
 
 	remoteAddr := conn.RemoteAddr().(*net.TCPAddr)
 	fmt.Println("Connection accepted from", remoteAddr.IP)
 
-	handleConnection(conn)
+	err = handleConnection(conn)
+	if err != nil {
+		fmt.Printf("error while handling connection: %s\n", err)
+	}
 
 }
