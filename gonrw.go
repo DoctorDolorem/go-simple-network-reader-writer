@@ -20,42 +20,36 @@ func defineFlags() {
 
 }
 
-func handleConnection(conn net.Conn) error {
+func handleConnection(conn net.Conn) {
 	// Goroutine for sending commands
-	go func() {
-		scanner := bufio.NewScanner(os.Stdin)
-		for scanner.Scan() {
-			cmdStr := scanner.Text() + "\n"
-			if cmdStr == "close;\n" {
-				fmt.Println("Closing connection")
-				exit = true
-				conn.Write([]byte("exit\n"))
-				break
-			}
-			_, err := conn.Write([]byte(cmdStr))
-			if err != nil {
-				log.Println("error writing to connection:", err)
-			}
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		cmdStr := scanner.Text() + "\n"
+		if cmdStr == "close\n" {
+			fmt.Println("Closing connection")
+			exit = true
+			conn.Write([]byte("exit\n"))
+			break
 		}
-		err := scanner.Err()
+		_, err := conn.Write([]byte(cmdStr))
 		if err != nil {
-			log.Println("error reading from stdin:", err)
+			log.Println("error writing to connection:", err)
 		}
-
-		if exit {
-			return
-		}
-	}()
+	}
+	err := scanner.Err()
+	if err != nil {
+		log.Println("error reading from stdin:", err)
+	}
 
 	if exit {
-		return nil
+		return
 	}
 
-	_, err := io.Copy(os.Stdout, conn)
+	_, err = io.Copy(os.Stdout, conn)
 	if err != nil {
-		return fmt.Errorf("error reading from connection: %s", err)
+		fmt.Printf("error reading from connection: %s", err)
 	}
-	return nil
+	//return nil
 }
 
 func main() {
@@ -79,14 +73,14 @@ func main() {
 	remoteAddr := conn.RemoteAddr().(*net.TCPAddr)
 	fmt.Println("Connection accepted from", remoteAddr.IP)
 
-	err = handleConnection(conn)
-	if err != nil {
+	go handleConnection(conn)
+	/* 	if err != nil {
 		fmt.Printf("error while handling connection: %s\n", err)
 		conn.Close()
-	}
+	} */
 	if exit {
 		conn.Close()
 		fmt.Printf("Connection closed by user\n")
-		os.Exit(0)
+		os.Exit(1)
 	}
 }
