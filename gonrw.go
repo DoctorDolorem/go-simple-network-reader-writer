@@ -18,8 +18,6 @@ func defineFlags() {
 }
 
 func handleConnection(conn net.Conn) {
-	defer conn.Close()
-
 	// Goroutine for sending commands
 	go func() {
 		scanner := bufio.NewScanner(os.Stdin)
@@ -57,10 +55,11 @@ func main() {
 	conn, err := listener.Accept()
 	if err != nil {
 		log.Fatal(err)
-	} else {
-		remoteAddr := conn.RemoteAddr().(*net.TCPAddr)
-		fmt.Println("Connection accepted from", remoteAddr.IP)
 	}
+	defer conn.Close()
+
+	remoteAddr := conn.RemoteAddr().(*net.TCPAddr)
+	fmt.Println("Connection accepted from", remoteAddr.IP)
 
 	handleConnection(conn)
 
