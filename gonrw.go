@@ -11,45 +11,46 @@ import (
 )
 
 var port string
-var exit = false
 
 func defineFlags() {
 	flag.StringVar(&port, "p", "9000", "port to listen on")
 	flag.Parse()
 	port = ":" + port
-
 }
 
 func handleConnection(conn net.Conn) {
+	defer conn.Close()
+	//var exit bool
 	// Goroutine for sending commands
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		cmdStr := scanner.Text() + "\n"
-		if cmdStr == "close\n" {
-			fmt.Println("Closing connection")
-			exit = true
-			conn.Write([]byte("exit\n"))
-			break
+	go func() {
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			cmdStr := scanner.Text() + "\n"
+			if cmdStr == "exit\n" {
+				_, err := conn.Write([]byte("exit" + "\n"))
+				if err != nil {
+					log.Println("error writing to connection:", err)
+				}
+				fmt.Print("Connection closed\n")
+				//conn.Close()
+				os.Exit(0)
+
+			}
+			_, err := conn.Write([]byte(cmdStr))
+			if err != nil {
+				log.Println("error writing to connection:", err)
+			}
 		}
-		_, err := conn.Write([]byte(cmdStr))
+		err := scanner.Err()
 		if err != nil {
-			log.Println("error writing to connection:", err)
+			log.Println("error reading from stdin:", err)
 		}
-	}
-	err := scanner.Err()
-	if err != nil {
-		log.Println("error reading from stdin:", err)
-	}
+	}()
 
-	if exit {
-		return
-	}
-
-	_, err = io.Copy(os.Stdout, conn)
+	_, err := io.Copy(os.Stdout, conn)
 	if err != nil {
-		fmt.Printf("error reading from connection: %s", err)
+		fmt.Printf("error reading from connectionAAA: %s", err)
 	}
-	//return nil
 }
 
 func main() {
@@ -68,19 +69,10 @@ func main() {
 		fmt.Printf("error accepting incoming connection: %s", err)
 		conn.Close()
 	}
-	defer conn.Close()
 
 	remoteAddr := conn.RemoteAddr().(*net.TCPAddr)
 	fmt.Println("Connection accepted from", remoteAddr.IP)
 
-	go handleConnection(conn)
-	/* 	if err != nil {
-		fmt.Printf("error while handling connection: %s\n", err)
-		conn.Close()
-	} */
-	if exit {
-		conn.Close()
-		fmt.Printf("Connection closed by user\n")
-		os.Exit(1)
-	}
+	handleConnection(conn)
+
 }
